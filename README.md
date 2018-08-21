@@ -1,0 +1,2 @@
+# rclipd
+RClip server daemon
