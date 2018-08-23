@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "pb";
+
+message PushRequest {
+  string data = 1;
+}
+message PushResponse {}
+
+message GetRequest {}
+message GetResponse {
+  string data = 1;
+}
+
+service Clipboard {
+  rpc Push(PushRequest) returns (PushResponse) {}
+  rpc Get(GetRequest) returns (GetResponse) {}
+}
