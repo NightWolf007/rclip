@@ -21,12 +21,14 @@ var copyCmd = &cobra.Command{
 	Short: "Send data to rclip server",
 	Long:  `Send data to rclip server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if copyData == "" {
+		data := []byte(copyData)
+		if len(data) == 0 {
 			scanner := bufio.NewScanner(os.Stdin)
 			for scanner.Scan() {
-				copyData += scanner.Text() + "\n"
+				data = append(data, scanner.Bytes()...)
+				data = append(data, '\n')
 			}
-			copyData = copyData[:len(copyData)-1]
+			data = data[:len(data)-1]
 		}
 
 		conn, err := grpc.Dial(copyAddr, grpc.WithInsecure())
@@ -37,7 +39,7 @@ var copyCmd = &cobra.Command{
 		defer conn.Close()
 
 		client := pb.NewClipboardClient(conn)
-		_, err = client.Push(context.Background(), &pb.PushRequest{Data: copyData})
+		_, err = client.Push(context.Background(), &pb.PushRequest{Data: data})
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

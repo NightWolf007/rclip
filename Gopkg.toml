@@ -19,3 +19,7 @@ ignored = []
 [[constraint]]
   name = "github.com/rs/zerolog"
   version = "1.8.0"
+
+[[constraint]]
+  name = "github.com/segmentio/ksuid"
+  branch = "master"

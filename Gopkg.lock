@@ -104,6 +104,14 @@
   version = "v1.8.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:08ea4311f8db5760bed0ef68f83c7e6e9ce63a48c9f9e4309e6d12749dbf0d6c"
+  name = "github.com/segmentio/ksuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "a8437582dced442605405b80b2c5a7c3929fdfb3"
+
+[[projects]]
   digest = "1:7ba2551c9a8de293bc575dbe2c0d862c52252d26f267f784547f059f512471c8"
   name = "github.com/spf13/afero"
   packages = [
@@ -282,6 +290,7 @@
     "github.com/mitchellh/go-homedir",
     "github.com/rs/zerolog",
     "github.com/rs/zerolog/log",
+    "github.com/segmentio/ksuid",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "golang.org/x/net/context",

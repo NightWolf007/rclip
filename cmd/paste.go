@@ -16,8 +16,8 @@ var pasteAddr string
 // pasteCmd represents the paste command
 var pasteCmd = &cobra.Command{
 	Use:   "paste",
-	Short: "Puts data from RClip server into stdout",
-	Long:  `Puts data from RClip server into stdout`,
+	Short: "Puts data from RClip server to stdout",
+	Long:  `Puts data from RClip server to stdout`,
 	Run: func(cmd *cobra.Command, args []string) {
 		conn, err := grpc.Dial(pasteAddr, grpc.WithInsecure())
 		if err != nil {
@@ -27,12 +27,12 @@ var pasteCmd = &cobra.Command{
 		defer conn.Close()
 
 		client := pb.NewClipboardClient(conn)
-		resp, err := client.Get(context.Background(), &pb.GetRequest{})
+		clip, err := client.Get(context.Background(), &pb.GetRequest{})
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Print(resp.Data)
+		fmt.Print(clip.Data)
 	},
 }
 
