@@ -40,7 +40,7 @@ func init() {
 	rootCmd.AddCommand(pasteCmd)
 
 	pasteCmd.PersistentFlags().StringVarP(
-		&pasteAddr, "addr", "a", "localhost:8000",
+		&pasteAddr, "addr", "a", "localhost:9889",
 		"RClip server address",
 	)
 }

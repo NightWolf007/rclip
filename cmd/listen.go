@@ -64,7 +64,7 @@ func init() {
 	rootCmd.AddCommand(listenCmd)
 
 	listenCmd.PersistentFlags().StringVarP(
-		&listenAddr, "addr", "a", "localhost:8000",
+		&listenAddr, "addr", "a", "localhost:9889",
 		"RClip server address",
 	)
 

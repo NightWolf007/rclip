@@ -51,7 +51,7 @@ func init() {
 	rootCmd.AddCommand(copyCmd)
 
 	copyCmd.PersistentFlags().StringVarP(
-		&copyAddr, "addr", "a", "localhost:8000",
+		&copyAddr, "addr", "a", "localhost:9889",
 		"RClip server address",
 	)
 	copyCmd.Flags().StringVarP(
