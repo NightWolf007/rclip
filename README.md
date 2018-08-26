@@ -5,6 +5,7 @@ RClip is a headless clipboard.
 ```
 git clone https://github.com/NightWolf007/rclip.git
 cd rclip
+dep ensure
 sudo go build -o /usr/bin/rclip
 sudo mkdir /etc/rclip
 sudo cp rclipd.sample.yaml /etc/rclip/rclipd.yaml
