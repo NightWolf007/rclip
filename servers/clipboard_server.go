@@ -39,7 +39,7 @@ func NewClipboardServer() *ClipboardServer {
 }
 
 func (s *ClipboardServer) Push(ctx context.Context, params *pb.PushRequest) (*pb.Clip, error) {
-	log.Debug().Msgf("Received data: %s", params.Data)
+	log.Debug().Bytes("data", params.Data).Msg("Received")
 
 	s.buffer = params.Data
 	s.broadcast(s.buffer)
@@ -50,7 +50,7 @@ func (s *ClipboardServer) Push(ctx context.Context, params *pb.PushRequest) (*pb
 }
 
 func (s *ClipboardServer) Get(ctx context.Context, params *pb.GetRequest) (*pb.Clip, error) {
-	log.Debug().Msgf("Sending data: %s", s.buffer)
+	log.Debug().Bytes("data", s.buffer).Msg("Sending")
 
 	return &pb.Clip{
 		Data: s.buffer,
