@@ -1,26 +1,57 @@
 package cmd
 
 import (
-	"fmt"
+	"net"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+
+	"github.com/NightWolf007/rclip/internal/app/servers"
+	"github.com/NightWolf007/rclip/internal/pkg/api"
 )
 
-func serverCmd() *cobra.Command {
-	var bindAddr string
+// ServerDefaultAddr is a default server listen address.
+const ServerDefaultAddr = "localhost:9889"
 
-	cmd := &cobra.Command{
-		Use:   "server",
-		Short: "Start RClip server",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Not implemented yet")
-		},
-	}
+var (
+	serverBindAddr    string
+	serverHistorySize uint
+)
 
-	cmd.Flags().StringVarP(
-		&bindAddr, "bind", "b", "localhost:9889",
+var serverCmd = &cobra.Command{
+	Use:   "server",
+	Short: "Start RClip server",
+	Run: func(cmd *cobra.Command, args []string) {
+		lis, err := net.Listen("tcp", serverBindAddr)
+		if err != nil {
+			log.Fatal().
+				Err(err).
+				Str("addr", serverBindAddr).
+				Msg("Failed to listen addr")
+		}
+
+		server := grpc.NewServer()
+
+		clipboardServer := servers.NewClipboardServer(serverHistorySize)
+		api.RegisterClipboardAPIServer(server, clipboardServer)
+
+		err = server.Serve(lis)
+		if err != nil {
+			log.Fatal().
+				Err(err).
+				Msg("Failed to serve GRPC server")
+		}
+	},
+}
+
+func init() {
+	serverCmd.Flags().StringVarP(
+		&serverBindAddr, "bind", "b", ServerDefaultAddr,
 		"Bind address",
 	)
-
-	return cmd
+	serverCmd.Flags().UintVarP(
+		&serverHistorySize, "hist-size", "s", 100,
+		"Maximum size of clipboard history",
+	)
 }

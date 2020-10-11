@@ -43,10 +43,10 @@ func rootCmd() *cobra.Command {
 		"Print logs in a colorized, human-friendly format",
 	)
 
-	cmd.AddCommand(serverCmd())
-	cmd.AddCommand(copyCmd())
-	cmd.AddCommand(pasteCmd())
-	cmd.AddCommand(daemonCmd())
+	cmd.AddCommand(serverCmd)
+	cmd.AddCommand(copyCmd)
+	cmd.AddCommand(pasteCmd)
+	cmd.AddCommand(daemonCmd)
 
 	return cmd
 }

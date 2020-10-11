@@ -1,26 +1,36 @@
 package cmd
 
 import (
-	"fmt"
+	"context"
 
+	"github.com/NightWolf007/rclip/internal/pkg/clipboard"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-func daemonCmd() *cobra.Command {
-	var listenAddr string
+var (
+	daemonListenAddr string
+)
 
-	cmd := &cobra.Command{
-		Use:   "daemon",
-		Short: "RClip daemon syncs system buffer with RClip server",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Not implemented yet")
-		},
-	}
+var daemonCmd = &cobra.Command{
+	Use:   "daemon",
+	Short: "RClip daemon syncs system clipboard buffer with RClip server",
+	Run: func(cmd *cobra.Command, args []string) {
+		if !clipboard.IsSupported() {
+			log.Fatal().Msg("System clipboard unsupported")
+		}
 
-	cmd.Flags().StringVarP(
-		&listenAddr, "listen", "l", "localhost:9889",
+		ctx := context.Background()
+
+		go daemonListenClipboard(ctx)
+
+		go daemonListenRemote(ctx)
+	},
+}
+
+func init() {
+	daemonCmd.Flags().StringVarP(
+		&daemonListenAddr, "listen", "l", ServerDefaultAddr,
 		"Listen server address",
 	)
-
-	return cmd
 }

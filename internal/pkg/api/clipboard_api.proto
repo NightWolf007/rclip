@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package rclip.api;
+
+option go_package = "github.com/NightWolf007/rclip/internal/pkg/api";
+
+// ClipboardAPI provides an API interface for RClip clipboard.
+service ClipboardAPI {
+  // Get returns the latest value from clipboard.
+  rpc Get(GetRequest) returns (GetResponse);
+  // Hist returns all clipboard history.
+  rpc Hist(HistRequest) returns (HistResponse);
+  // Push writes new clipboard value.
+  rpc Push(PushRequest) returns (PushResponse);
+  // Subscribe allows to subscribe on server clipboard changes.
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+}
+
+message GetRequest {}
+
+message GetResponse {
+  bytes value = 1;
+}
+
+message HistRequest {}
+
+message HistResponse {
+  repeated bytes values = 1;
+}
+
+message PushRequest {
+  bytes value = 1;
+}
+
+message PushResponse {}
+
+message SubscribeRequest {}
+
+message SubscribeResponse {
+  bytes value = 1;
+}
