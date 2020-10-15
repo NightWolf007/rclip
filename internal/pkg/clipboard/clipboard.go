@@ -3,7 +3,6 @@ package clipboard
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/atotto/clipboard"
 )
@@ -33,15 +32,6 @@ func (c clipboardImpl) Write(val []byte) error {
 	}
 
 	return nil
-}
-
-// Watch creates a watch stream for clipboard changes.
-func Watch() *Stream {
-	return &Stream{
-		RequestDelay: time.Second,
-		Clipboard:    clipboardImpl{},
-		TimeAfter:    time.After,
-	}
 }
 
 // Read reads system clipboard.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/NightWolf007/rclip/internal/pkg/grace"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -64,5 +65,25 @@ func initLogger(verbose, pretty bool) {
 
 	if pretty {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+}
+
+func newGrace() *grace.Grace {
+	return &grace.Grace{
+		Timeout: 5 * time.Second,
+		OnShutdown: func() {
+			log.Info().Msg("Gracefully stopping... (press Ctrl+C again to force)")
+		},
+		OnDone: func() {
+			log.Info().Msg("Bye!")
+		},
+		OnForceQuit: func() {
+			log.Info().Msg("Force stopping...")
+			log.Info().Msg("Bye!")
+		},
+		OnTimeout: func() {
+			log.Info().Msg("Gracefully stop is taking too long. Force stopping...")
+			log.Info().Msg("Bye!")
+		},
 	}
 }

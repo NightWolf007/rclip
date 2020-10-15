@@ -5,13 +5,12 @@ import (
 	"net"
 	"testing"
 
+	"github.com/NightWolf007/rclip/internal/app/servers"
+	"github.com/NightWolf007/rclip/internal/pkg/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
-
-	"github.com/NightWolf007/rclip/internal/app/servers"
-	"github.com/NightWolf007/rclip/internal/pkg/api"
 )
 
 func TestClipboardServer_Get(t *testing.T) {

@@ -3,12 +3,11 @@ package cmd
 import (
 	"net"
 
+	"github.com/NightWolf007/rclip/internal/app/servers"
+	"github.com/NightWolf007/rclip/internal/pkg/api"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-
-	"github.com/NightWolf007/rclip/internal/app/servers"
-	"github.com/NightWolf007/rclip/internal/pkg/api"
 )
 
 // ServerDefaultAddr is a default server listen address.
@@ -42,6 +41,11 @@ var serverCmd = &cobra.Command{
 				Err(err).
 				Msg("Failed to serve GRPC server")
 		}
+
+		grc := newGrace()
+		grc.Shutdown = server.GracefulStop
+
+		grc.Run()
 	},
 }
 

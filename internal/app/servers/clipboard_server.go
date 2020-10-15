@@ -45,8 +45,7 @@ func (s *ClipboardServer) Push(ctx context.Context, in *api.PushRequest) (*api.P
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	currentVal := s.store.Get()
-	if in.Value != nil && !bytes.Equal(in.Value, currentVal) {
+	if in.Value != nil && !bytes.Equal(in.Value, s.store.Get()) {
 		s.store.Push(in.Value)
 		s.pubsub.Publish(in.Value)
 	}

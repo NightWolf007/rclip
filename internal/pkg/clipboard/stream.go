@@ -17,19 +17,28 @@ type Stream struct {
 
 	TimeAfter func(delay time.Duration) <-chan time.Time
 
+	ctx       context.Context
 	prevValue []byte
+}
+
+// Watch creates a watch stream for clipboard changes.
+func Watch(ctx context.Context) *Stream {
+	return &Stream{
+		RequestDelay: time.Second,
+		Clipboard:    clipboardImpl{},
+		TimeAfter:    time.After,
+		ctx:          ctx,
+	}
 }
 
 // Recv blocks thread until clipboard value change.
 // Use context to cancel receiving.
-func (s *Stream) Recv(ctx context.Context) ([]byte, error) {
+func (s *Stream) Recv() ([]byte, error) {
 	for {
 		val, err := s.Clipboard.Read()
 		if err != nil {
 			return nil, fmt.Errorf("clipboard read: %w", err)
 		}
-
-		fmt.Printf("%v\n", val)
 
 		if !bytes.Equal(val, s.prevValue) {
 			s.prevValue = val
@@ -40,8 +49,8 @@ func (s *Stream) Recv(ctx context.Context) ([]byte, error) {
 		select {
 		case <-s.TimeAfter(s.RequestDelay):
 			continue
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		case <-s.ctx.Done():
+			return nil, s.ctx.Err()
 		}
 	}
 }

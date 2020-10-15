@@ -32,7 +32,7 @@ func TestWatch(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	cbMock := &ClipboardMock{}
 
-	stream := clipboard.Watch()
+	stream := clipboard.Watch(ctx)
 	stream.Clipboard = cbMock
 
 	timeAfterCounter := 0
@@ -53,14 +53,14 @@ func TestWatch(t *testing.T) {
 	cbMock.On("Read").Once().Return([]byte{1}, nil)
 	cbMock.On("Read").Return([]byte{2}, nil)
 
-	val, err := stream.Recv(ctx)
+	val, err := stream.Recv()
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{1}, val)
 	assert.Equal(t, 0, timeAfterCounter)
 
 	timeAfterCounter = 0
 
-	val, err = stream.Recv(ctx)
+	val, err = stream.Recv()
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{2}, val)
 	assert.Equal(t, 3, timeAfterCounter)
@@ -69,7 +69,7 @@ func TestWatch(t *testing.T) {
 	wg.Add(1)
 
 	go func() {
-		_, err := stream.Recv(ctx)
+		_, err := stream.Recv()
 		assert.Error(t, err)
 		wg.Done()
 	}()

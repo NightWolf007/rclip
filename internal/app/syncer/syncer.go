@@ -2,41 +2,33 @@
 package syncer
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/NightWolf007/rclip/internal/pkg/api"
 	"github.com/NightWolf007/rclip/internal/pkg/clipboard"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 )
 
+// Syncer struct provides clipboard sync methods.
 type Syncer struct {
-	serverAddr string
+	addr   string
+	logger zerolog.Logger
 }
 
-func RemoteToLocal(ctx context.Context) error {
-	serverAddr := "localhost:9889"
-
-	for {
-
-		err = syncRemoteToLocal(ctx)
+// New builds new syncer.
+func New(addr string, logger zerolog.Logger) *Syncer {
+	return &Syncer{
+		addr:   addr,
+		logger: logger,
 	}
 }
 
-func syncRemoteToLocal(ctx context.Context) error {
-	serverAddr := "localhost:9889"
-
-	log := log.With().Str("addr", serverAddr).Logger()
-
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+// RemoteToLocal starts sync loop from remote clipboard to local clipboard.
+func (s *Syncer) RemoteToLocal(ctx context.Context) error {
+	conn, err := grpc.Dial(s.addr, grpc.WithInsecure())
 	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Failed to connect to the server")
-
 		return fmt.Errorf("grpc dial: %w", err)
 	}
 
@@ -46,93 +38,68 @@ func syncRemoteToLocal(ctx context.Context) error {
 
 	stream, err := client.Subscribe(ctx, &api.SubscribeRequest{})
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("method", "Subscribe").
-			Msg("Failed to execute RPC method")
-
-		return fmt.Errorf("clipboardapi client subscribe: %w")
+		return fmt.Errorf("client subscribe: %w", err)
 	}
 
-	for {
-		select {}
-		resp, err := stream.Recv()
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to receive value from stream")
-
-			return fmt.Errorf("stream recv: %w", err)
-		}
-
-		log = log.With().Bytes("value", resp.Value).Logger()
-
-		log.Debug().
-			Msg("Received new value from stream")
-
-		updateClipboardValue(log, resp.Value)
-	}
+	return s.consumeLoop(
+		ctx,
+		NewRemoteInputStream(stream),
+		NewLocalOutputStream(),
+	)
 }
 
-func updateClipboardValue(log zerolog.Logger, val []byte) {
-	currentVal, err := clipboard.Read()
+// LocalToRemote starts sync loop from local clipboard to remote clipboard.
+func (s *Syncer) LocalToRemote(ctx context.Context) error {
+	conn, err := grpc.Dial(s.addr, grpc.WithInsecure())
 	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Failed to read clipboard current value")
-	}
-
-	log = log.With().Bytes("currentValue", val).Logger()
-
-	if val != nil && !bytes.Equal(val, currentVal) {
-		err := clipboard.Write(val)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to write value to clipboard")
-
-			return
-		}
-
-		log.Debug().
-			Msg("The value written to the clipboard")
-	}
-}
-
-func daemonListenClipboard(ctx context.Context) error {
-	stream := clipboard.Watch()
-
-	conn, err := grpc.Dial(pasteListenAddr, grpc.WithInsecure())
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("addr", copyListenAddr).
-			Msg("Failed to connect to the server")
-
 		return fmt.Errorf("grpc dial: %w", err)
 	}
 
 	defer conn.Close()
 
-	client := api.NewClipboardAPIClient(conn)
+	return s.consumeLoop(
+		ctx,
+		NewLocalInputStream(clipboard.Watch(ctx)),
+		NewRemoteOutputStream(ctx, api.NewClipboardAPIClient(conn)),
+	)
+}
+
+func (s *Syncer) consumeLoop(ctx context.Context, in InputStream, out OutputStream) error {
+	s.logger.Debug().
+		Msg("Starting consuming loop")
 
 	for {
-		val, err := stream.Recv(ctx)
+		err := s.consume(ctx, in, out)
 		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to receive value from clipboard stream")
-
-			continue
-		}
-
-		_, err = client.Push(ctx, &api.PushRequest{Value: val})
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Failed to push clipboard value to the server")
-
-			return fmt.Errorf("client push: %w", err)
+			return fmt.Errorf("consume: %w", err)
 		}
 	}
+}
+
+func (s *Syncer) consume(ctx context.Context, in InputStream, out OutputStream) error {
+	val, err := in.Recv()
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil
+		}
+
+		return fmt.Errorf("stream recv: %w", err)
+	}
+
+	s.logger.Debug().
+		Bytes("value", val).
+		Msg("Received new value from input stream")
+
+	if val != nil {
+		err := out.Send(val)
+		if err != nil {
+			return fmt.Errorf("stream send: %w", err)
+		}
+
+		s.logger.Debug().
+			Bytes("value", val).
+			Msg("New value has been sent to the output stream")
+	}
+
+	return nil
 }
