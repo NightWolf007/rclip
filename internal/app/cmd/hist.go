@@ -2,25 +2,21 @@ package cmd
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
+	"fmt"
 
 	"github.com/NightWolf007/rclip/internal/pkg/api"
 	"github.com/NightWolf007/rclip/internal/pkg/clipboard"
+	"github.com/manifoldco/promptui"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
-var (
-	copyData string
-)
-
-var copyCmd = &cobra.Command{
-	Use:     "copy",
-	Aliases: []string{"cp", "c"},
-	Short:   "Copy content and sends it to RClip server",
+var histCmd = &cobra.Command{
+	Use:     "hist",
+	Aliases: []string{"ht", "h"},
+	Short:   "Shows content of RClip server history",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		registerViperKey(
 			"client.target",
@@ -29,24 +25,13 @@ var copyCmd = &cobra.Command{
 			ServerDefaultAddr,
 		)
 		registerViperKey(
-			"client.copy.clipboard",
-			"CLIENT_COPY_CLIPBOARD",
+			"client.hist.clipboard",
+			"CLIENT_HIST_CLIPBOARD",
 			cmd.Flags().Lookup("clipboard"),
 			false,
 		)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		data := []byte(copyData)
-
-		if len(copyData) == 0 {
-			var err error
-
-			data, err = ioutil.ReadAll(os.Stdin)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Failed to read stdin")
-			}
-		}
-
 		targetAddr := viper.GetString("client.target")
 
 		conn, err := grpc.Dial(targetAddr, grpc.WithInsecure())
@@ -60,31 +45,53 @@ var copyCmd = &cobra.Command{
 		defer conn.Close()
 
 		client := api.NewClipboardAPIClient(conn)
-		_, err = client.Push(context.Background(), &api.PushRequest{Value: data})
+		resp, err := client.Hist(context.Background(), &api.HistRequest{})
 		if err != nil {
 			log.Fatal().
 				Err(err).
-				Str("method", "Push").
+				Str("target", targetAddr).
+				Str("method", "Get").
 				Msg("Failed to execute RPC method")
 		}
 
-		if viper.GetBool("client.copy.clipboard") {
-			clipboard.Write(data)
+		selItems := make([]string, len(resp.Values))
+		for i, val := range resp.Values {
+			selItems[i] = string(val[0:100])
 		}
+
+		sel := promptui.Select{
+			Size:  10,
+			Items: selItems,
+		}
+
+		_, selResult, err := sel.Run()
+		if err != nil {
+			log.Fatal().
+				Err(err).
+				Msg("Failed to execute select")
+		}
+
+		if viper.GetBool("client.hist.clipboard") {
+			err := clipboard.Write([]byte(selResult))
+			if err != nil {
+				log.Fatal().
+					Err(err).
+					Str("value", selResult).
+					Msg("Failed to write value to clipboard")
+			}
+		}
+
+		fmt.Print(selResult)
 	},
 }
 
 func init() {
-	copyCmd.Flags().StringP(
+	histCmd.Flags().StringP(
 		"target", "t", ServerDefaultAddr,
 		"Target server address",
 	)
-	copyCmd.Flags().BoolP(
+	histCmd.Flags().BoolP(
 		"clipboard", "c", false,
-		"Also copy value to the system clipboard",
-	)
-	copyCmd.Flags().StringVarP(
-		&copyData, "data", "d", "",
-		"Use the given data instead of stdin",
+		"Also paste value to the system clipboard",
 	)
 }

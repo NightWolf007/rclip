@@ -9,31 +9,40 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
-
-var daemonListenAddr string
 
 var daemonCmd = &cobra.Command{
 	Use:   "daemon",
 	Short: "RClip daemon syncs system clipboard buffer with RClip server",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		registerViperKey(
+			"client.target",
+			"CLIENT_TARGET",
+			cmd.Flags().Lookup("target"),
+			ServerDefaultAddr,
+		)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if !clipboard.IsSupported() {
-			log.Fatal().Msg("System clipboard unsupported")
+			log.Fatal().Msg("System clipboard is unsupported")
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 
+		targetAddr := viper.GetString("client.target")
+
 		rtlLogger := log.With().
 			Str("module", "rtl-sync").
-			Str("addr", daemonListenAddr).
+			Str("taget", targetAddr).
 			Logger()
-		rtlSyncer := syncer.New(daemonListenAddr, rtlLogger)
+		rtlSyncer := syncer.New(targetAddr, rtlLogger)
 
 		ltrLogger := log.With().
 			Str("module", "ltr-sync").
-			Str("addr", daemonListenAddr).
+			Str("target", targetAddr).
 			Logger()
-		ltrSyncer := syncer.New(daemonListenAddr, ltrLogger)
+		ltrSyncer := syncer.New(targetAddr, ltrLogger)
 
 		wg := sync.WaitGroup{}
 		wg.Add(2) // nolint:gomnd // Starting only two goroutines
@@ -55,9 +64,9 @@ var daemonCmd = &cobra.Command{
 }
 
 func init() {
-	daemonCmd.Flags().StringVarP(
-		&daemonListenAddr, "listen", "l", ServerDefaultAddr,
-		"Listen server address",
+	daemonCmd.Flags().StringP(
+		"target", "t", ServerDefaultAddr,
+		"Target server address",
 	)
 }
 

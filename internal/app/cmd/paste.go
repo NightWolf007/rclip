@@ -8,24 +8,36 @@ import (
 	"github.com/NightWolf007/rclip/internal/pkg/clipboard"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-)
-
-var (
-	pasteListenAddr  string
-	pasteToClipboard bool
 )
 
 var pasteCmd = &cobra.Command{
 	Use:     "paste",
 	Aliases: []string{"pt", "p"},
 	Short:   "Prints content from RClip server",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		registerViperKey(
+			"client.target",
+			"CLIENT_TARGET",
+			cmd.Flags().Lookup("target"),
+			ServerDefaultAddr,
+		)
+		registerViperKey(
+			"client.paste.clipboard",
+			"CLIENT_PASTE_CLIPBOARD",
+			cmd.Flags().Lookup("clipboard"),
+			false,
+		)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		conn, err := grpc.Dial(pasteListenAddr, grpc.WithInsecure())
+		targetAddr := viper.GetString("client.target")
+
+		conn, err := grpc.Dial(targetAddr, grpc.WithInsecure())
 		if err != nil {
 			log.Fatal().
 				Err(err).
-				Str("addr", daemonListenAddr).
+				Str("target", targetAddr).
 				Msg("Failed to connect to the server")
 		}
 
@@ -36,13 +48,20 @@ var pasteCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().
 				Err(err).
+				Str("target", targetAddr).
 				Str("method", "Get").
 				Msg("Failed to execute RPC method")
 		}
 
 		if resp.Value != nil {
-			if pasteToClipboard {
-				clipboard.Write(resp.Value)
+			if viper.GetBool("client.paste.clipboard") {
+				err := clipboard.Write(resp.Value)
+				if err != nil {
+					log.Fatal().
+						Err(err).
+						Bytes("value", resp.Value).
+						Msg("Failed to write value to clipboard")
+				}
 			}
 
 			fmt.Print(resp.Value)
@@ -51,12 +70,12 @@ var pasteCmd = &cobra.Command{
 }
 
 func init() {
-	pasteCmd.Flags().StringVarP(
-		&pasteListenAddr, "listen", "l", ServerDefaultAddr,
-		"Listen server address",
+	pasteCmd.Flags().StringP(
+		"target", "t", ServerDefaultAddr,
+		"Target server address",
 	)
-	pasteCmd.Flags().BoolVarP(
-		&pasteToClipboard, "clipboard", "c", false,
+	pasteCmd.Flags().BoolP(
+		"clipboard", "c", false,
 		"Also paste value to the system clipboard",
 	)
 }
