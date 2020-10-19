@@ -7,7 +7,9 @@ require (
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.2.3
 	github.com/golang/protobuf v1.4.2
+	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/manifoldco/promptui v0.8.0
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.3

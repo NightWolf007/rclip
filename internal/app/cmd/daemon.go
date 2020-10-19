@@ -5,17 +5,17 @@ import (
 	"sync"
 
 	"github.com/NightWolf007/rclip/internal/app/syncer"
-	"github.com/NightWolf007/rclip/internal/pkg/clipboard"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var daemonCmd = &cobra.Command{
 	Use:   "daemon",
 	Short: "RClip daemon syncs system clipboard buffer with RClip server",
 	PreRun: func(cmd *cobra.Command, args []string) {
+		checkClipboardSupport()
+
 		registerViperKey(
 			"client.target",
 			"CLIENT_TARGET",
@@ -24,36 +24,28 @@ var daemonCmd = &cobra.Command{
 		)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		if !clipboard.IsSupported() {
-			log.Fatal().Msg("System clipboard is unsupported")
-		}
-
 		ctx, cancelFn := context.WithCancel(context.Background())
-
-		targetAddr := viper.GetString("client.target")
 
 		rtlLogger := log.With().
 			Str("module", "rtl-sync").
-			Str("taget", targetAddr).
 			Logger()
-		rtlSyncer := syncer.New(targetAddr, rtlLogger)
+		rtlSyncer := syncer.New(rtlLogger)
 
 		ltrLogger := log.With().
 			Str("module", "ltr-sync").
-			Str("target", targetAddr).
 			Logger()
-		ltrSyncer := syncer.New(targetAddr, ltrLogger)
+		ltrSyncer := syncer.New(ltrLogger)
 
 		wg := sync.WaitGroup{}
 		wg.Add(2) // nolint:gomnd // Starting only two goroutines
 
-		go runDaemon(func() error {
+		go runDaemon(&wg, rtlLogger, func() error {
 			return rtlSyncer.RemoteToLocal(ctx)
-		}, &wg, rtlLogger)
+		})
 
-		go runDaemon(func() error {
+		go runDaemon(&wg, ltrLogger, func() error {
 			return ltrSyncer.RemoteToLocal(ctx)
-		}, &wg, ltrLogger)
+		})
 
 		grc := newGrace()
 		grc.Shutdown = cancelFn
@@ -70,18 +62,22 @@ func init() {
 	)
 }
 
-func runDaemon(fn func() error, wg *sync.WaitGroup, logger zerolog.Logger) {
+func runDaemon(wg *sync.WaitGroup, logger zerolog.Logger, fn func() error) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error().
 				Interface("error", r).
-				Msg("Daemon recovered from panic")
+				Msg("Recovered from panic")
 		}
 	}()
 
 	for {
+		logger.Debug().
+			Msg("Starting deamon")
+
 		err := fn()
 		if err == nil {
+			logger.Debug().Msg("Shutting down daemon")
 			break
 		}
 
@@ -92,5 +88,6 @@ func runDaemon(fn func() error, wg *sync.WaitGroup, logger zerolog.Logger) {
 		logger.Debug().Msg("Restarting daemon")
 	}
 
+	logger.Debug().Msg("Deamon is shutted down")
 	wg.Done()
 }

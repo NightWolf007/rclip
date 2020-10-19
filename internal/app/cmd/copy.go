@@ -5,40 +5,37 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/NightWolf007/rclip/internal/app/client"
 	"github.com/NightWolf007/rclip/internal/pkg/api"
-	"github.com/NightWolf007/rclip/internal/pkg/clipboard"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 )
 
-var (
-	copyData string
-)
+var copyOpts = struct {
+	data         string
+	useClipboard bool
+}{}
 
 var copyCmd = &cobra.Command{
 	Use:     "copy",
 	Aliases: []string{"cp", "c"},
 	Short:   "Copy content and sends it to RClip server",
 	PreRun: func(cmd *cobra.Command, args []string) {
+		if copyOpts.useClipboard {
+			checkClipboardSupport()
+		}
+
 		registerViperKey(
 			"client.target",
 			"CLIENT_TARGET",
 			cmd.Flags().Lookup("target"),
 			ServerDefaultAddr,
 		)
-		registerViperKey(
-			"client.copy.clipboard",
-			"CLIENT_COPY_CLIPBOARD",
-			cmd.Flags().Lookup("clipboard"),
-			false,
-		)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		data := []byte(copyData)
+		data := []byte(copyOpts.data)
 
-		if len(copyData) == 0 {
+		if len(copyOpts.data) == 0 {
 			var err error
 
 			data, err = ioutil.ReadAll(os.Stdin)
@@ -47,29 +44,16 @@ var copyCmd = &cobra.Command{
 			}
 		}
 
-		targetAddr := viper.GetString("client.target")
+		cli, err := client.Dial()
+		errF(err)
 
-		conn, err := grpc.Dial(targetAddr, grpc.WithInsecure())
-		if err != nil {
-			log.Fatal().
-				Err(err).
-				Str("target", targetAddr).
-				Msg("Failed to connect to the server")
-		}
+		defer cli.Close()
 
-		defer conn.Close()
+		_, err = cli.Push(context.Background(), &api.PushRequest{Value: data})
+		errF(err)
 
-		client := api.NewClipboardAPIClient(conn)
-		_, err = client.Push(context.Background(), &api.PushRequest{Value: data})
-		if err != nil {
-			log.Fatal().
-				Err(err).
-				Str("method", "Push").
-				Msg("Failed to execute RPC method")
-		}
-
-		if viper.GetBool("client.copy.clipboard") {
-			clipboard.Write(data)
+		if copyOpts.useClipboard {
+			errF(writeToClipboard(data))
 		}
 	},
 }
@@ -79,12 +63,12 @@ func init() {
 		"target", "t", ServerDefaultAddr,
 		"Target server address",
 	)
-	copyCmd.Flags().BoolP(
-		"clipboard", "c", false,
-		"Also copy value to the system clipboard",
-	)
 	copyCmd.Flags().StringVarP(
-		&copyData, "data", "d", "",
+		&copyOpts.data, "data", "d", "",
 		"Use the given data instead of stdin",
+	)
+	copyCmd.Flags().BoolVarP(
+		&copyOpts.useClipboard, "write", "w", false,
+		"Also write value to the system clipboard",
 	)
 }
