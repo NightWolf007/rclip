@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rclip.api;
 
-option go_package = "github.com/NightWolf007/rclip/internal/pkg/api";
+option go_package = "github.com/NightWolf007/rclip/pkg/api";
 
 // ClipboardAPI provides an API interface for RClip clipboard.
 service ClipboardAPI {
